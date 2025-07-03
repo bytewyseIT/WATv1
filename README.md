@@ -50,36 +50,33 @@ Ensure your `gam` binary is on your `PATH` and that you can run `gam info user <
 1. Clone this repository:
 
    ```bash
+   git clone https://github.com/your-org/wat.git
+   cd wat
    ```
 
-git clone [https://github.com/your-org/wat.git](https://github.com/your-org/wat.git)
-cd wat
-
-````
 2. Install Python dependencies:
-```bash
-pip install -r requirements.txt
-````
+
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. Make the main script executable:
 
    ```bash
+   chmod +x wat.py
    ```
-
-chmod +x WAT.py
-
-````
 
 ---
 
 ## Configuration
 
 - Verify your GAM setup:
-```bash
-gam info domain
-````
 
-* If you need custom GAM args (e.g. service account), update the `gam` command calls in `WAT.py` accordingly.
+  ```bash
+  gam info domain
+  ```
+
+- If you need custom GAM args (e.g. service account), update the `gam` command calls in `wat.py` accordingly.
 
 ---
 
@@ -88,7 +85,7 @@ gam info domain
 Run the tool:
 
 ```bash
-./WAT.py
+./wat.py
 ```
 
 You’ll be presented with a top‑level menu:
