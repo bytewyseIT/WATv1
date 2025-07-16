@@ -1,18 +1,9 @@
 # Workspace Administration Tool (WAT) Requirements
-# Python dependencies for the Google Workspace administration script
 
-# Core dependencies
 prompt_toolkit>=3.0.0
 
 # Optional but recommended for better terminal experience
 colorama>=0.4.4
 
 # Note: This script also requires GAM (Google Apps Manager) to be installed separately
-# GAM is not a Python package but a command-line tool
 # Download from: https://github.com/GAM-team/GAM/releases
-# 
-# System Requirements:
-# - Python 3.7 or higher
-# - GAM command-line tool installed and configured
-# - Google Workspace admin access
-# - Proper GAM authentication setup 
