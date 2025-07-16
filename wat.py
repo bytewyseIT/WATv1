@@ -37,6 +37,9 @@ script_info = {
 
 # In-memory employee list
 employees = []
+# In-memory group email list
+groups = []
+
 
 def fetch_employees_from_gworkspace():
     """Fetch all users from Google Workspace via GAM"""
@@ -61,6 +64,22 @@ def fetch_employees_from_gworkspace():
     except Exception as e:
         print(f"{RED}Exception: {e}{RESET}")
 
+def fetch_groups_from_gworkspace():
+    """Fetch all groups from Google Workspace via GAM"""
+    global groups
+    print(f"\n{YELLOW}Fetching groups from Google Workspace...{RESET}")
+    try:
+        command = ["gam", "print", "groups", "fields", "email"]
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            groups = [line.strip() for line in lines[1:] if line.strip()]
+            print(f"{GREEN}Imported {len(groups)} groups{RESET}")
+        else:
+            print(f"{RED}Error fetching groups: {result.stderr}{RESET}")
+    except Exception as e:
+        print(f"{RED}Exception: {e}{RESET}")
+
 class EmployeeCompleter(Completer):
     """Auto-complete for employee names and emails"""
     def get_completions(self, document, complete_event):
@@ -69,6 +88,26 @@ class EmployeeCompleter(Completer):
             candidate = f"{emp['name']} <{emp['email']}>"
             if text in emp['name'].lower() or text in emp['email'].lower():
                 yield Completion(candidate, start_position=-len(document.text))
+
+
+class GroupCompleter(Completer):
+    """Auto-complete for group emails"""
+    def get_completions(self, document, complete_event):
+        text = document.text.lower()
+        for group in groups:
+            if text in group.lower():
+                yield Completion(group, start_position=-len(document.text))
+
+
+class MenuCompleter(Completer):
+    """Tab completion for menu options."""
+    def __init__(self, options):
+        self.options = [str(opt) for opt in options]
+    def get_completions(self, document, complete_event):
+        text = document.text.strip()
+        for opt in self.options:
+            if opt.startswith(text):
+                yield Completion(opt, start_position=-len(text))
 
 
 def display_header():
@@ -309,12 +348,12 @@ def delete_group():
 
 
 def add_user_to_group():
-    grp = input("Group: ").strip()
+    grp = prompt("Group: ", completer=GroupCompleter()).strip()
     print("1. Single user  2. Bulk via CSV")
     choice = input("Option: ")
     
     if choice == '1':
-        usr = input("User to add: ").strip()
+        usr = prompt("User to add: ", completer=EmployeeCompleter()).strip()
         role = input("Role (member/manager/owner) [member]: ").strip() or "member"
         cmd = ["gam", "update", "group", grp, "add", role, "user", usr]
         subprocess.run(cmd)
@@ -363,12 +402,12 @@ def add_user_to_group():
 
 
 def remove_user_from_group():
-    grp = input("Group: ").strip()
+    grp = prompt("Group: ", completer=GroupCompleter()).strip()
     print("1. Single user  2. Bulk via CSV")
     choice = input("Option: ")
     
     if choice == '1':
-        usr = input("User to remove: ").strip()
+        usr = prompt("User to remove: ", completer=EmployeeCompleter()).strip()
         role = input("Role (member/manager/owner) [member]: ").strip() or "member"
         cmd = ["gam", "update", "group", grp, "remove", role, "user", usr]
         subprocess.run(cmd)
@@ -417,7 +456,7 @@ def remove_user_from_group():
 
 
 def list_group_members():
-    grp = input("Group email: ").strip()
+    grp = prompt("Group email: ", completer=GroupCompleter()).strip()
     # Use the correct GAM syntax for listing group members
     subprocess.run(["gam", "print", "group-members", "group", grp, "fields", "email,role"])
 
@@ -432,8 +471,9 @@ def employee_management_menu():
     print("5. Remove")
     print("6. List all")
     print("7. Clear all")
+    print("8. Refresh group list from Google Workspace")
     print("0. Back")
-    return input("Option: ")
+    return prompt("Option: ", completer=MenuCompleter([1,2,3,4,5,6,7,8,0]))
 
 # Reuse existing functions: import/export/add/remove/list/clear and manage_employees()
 
@@ -451,7 +491,7 @@ def user_management_menu():
         print("7. Undelete user")
         print("8. Lookup user info & groups")
         print("0. Back")
-        c = input("Option: ")
+        c = prompt("Option: ", completer=MenuCompleter([1,2,3,4,5,6,7,8,0]))
         if c == '1': create_user()
         elif c == '2': update_user()
         elif c == '3': modify_gmail_settings()
@@ -473,7 +513,7 @@ def group_management_menu():
         print("4. Remove member from group")
         print("5. List group members")
         print("0. Back")
-        c = input("Option: ")
+        c = prompt("Option: ", completer=MenuCompleter([1,2,3,4,5,0]))
         if c == '1': create_group()
         elif c == '2': delete_group()
         elif c == '3': add_user_to_group()
@@ -489,7 +529,7 @@ def drive_management_menu():
         print("1. List user files")
         print("2. Transfer ownership")
         print("0. Back")
-        c = input("Option: ")
+        c = prompt("Option: ", completer=MenuCompleter([1,2,0]))
         if c == '1': list_files()
         elif c == '2': transfer_ownership()
         elif c == '0': break
@@ -499,6 +539,7 @@ def drive_management_menu():
 def main():
     display_header()
     fetch_employees_from_gworkspace()
+    fetch_groups_from_gworkspace()
     while True:
         print("\n--- MAIN MENU ---")
         print("1. User Management")
@@ -506,14 +547,16 @@ def main():
         print("3. Drive Management")
         print("4. Employee DB")
         print("0. Exit")
-        choice = input("Option: ")
+        choice = prompt("Option: ", completer=MenuCompleter([1,2,3,4,0]))
         if choice == '1': user_management_menu()
         elif choice == '2': group_management_menu()
         elif choice == '3': drive_management_menu()
         elif choice == '4':
             from_manage = employee_management_menu()
+            if from_manage == '8':
+                fetch_groups_from_gworkspace()
             # call manage_employees similar to before
-            if from_manage: manage_employees()
+            elif from_manage: manage_employees()
         elif choice == '0':
             print("Exiting...")
             break
